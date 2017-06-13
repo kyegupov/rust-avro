@@ -45,7 +45,7 @@ pub enum Value<'a, 'b> {
 	String(Cow<'b, str>),
 	Record(Rc<RecordSchema<'a>>, Vec<Value<'a, 'b>>),
 	Enum(Rc<EnumSchema<'a>>, i32),
-	Array(Vec<Value<'a, 'b>>),
+	Array(Rc<Schema<'a>>, Vec<Value<'a, 'b>>),
 	Map(HashMap<Cow<'b, str>, Value<'a, 'b>>),
 	Fixed(Rc<FixedSchema<'a>>, Cow<'b, [u8]>),
 }
@@ -74,7 +74,8 @@ impl<'a, 'b> Value<'a, 'b> {
         Record, &Value::Record(ref sch, ref val) => (sch, val));
     value_unwrap_fn!(unwrap_enum, (&Rc<EnumSchema<'a>>, i32),
         Enum, &Value::Enum(ref sch, val) => (sch, val));
-    value_unwrap_fn!(unwrap_array, &Vec<Value<'a, 'b>>, Array, &Value::Array(ref val) => val);
+    value_unwrap_fn!(unwrap_array, (&Rc<Schema<'a>>, &Vec<Value<'a, 'b>>), 
+        Array, &Value::Array(ref item_type, ref val) => (item_type, val));
     value_unwrap_fn!(unwrap_map, &HashMap<Cow<'b, str>, Value<'a, 'b>>,
         Map, &Value::Map(ref val) => val);
     value_unwrap_fn!(unwrap_fixed, (&Rc<FixedSchema<'a>>, &Cow<'b, [u8]>),
@@ -198,8 +199,9 @@ pub enum Schema<'a> {
 	Record(Rc<RecordSchema<'a>>),
 	Error(Rc<RecordSchema<'a>>),
 	Enum(Rc<EnumSchema<'a>>),
+    // TODO: simplify by making payloads for Array, Map and Union non-named
 	Array {
-		items: Box<Schema<'a>>,
+		items: Rc<Schema<'a>>,
 	},
 	Map {
 		values: Box<Schema<'a>>,

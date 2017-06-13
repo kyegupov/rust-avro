@@ -124,23 +124,30 @@ pub fn encode<W: Write>(writer: &mut W, schema: &Schema, value: &Value) -> Resul
         },
         (&Schema::String, _) => Err(EncodeError { kind: EncodeErrorKind::InvalidSchema }),
 
-        (&Schema::Enum(_), &Value::Enum(_, num)) => {
+        (&Schema::Enum( ref schema_schema ), &Value::Enum(ref value_schema, num)) => {
+            assert!(&schema_schema.clone() == value_schema);
             try!(encode(writer, &Schema::Int, &Value::Int(num as i32)));
             Ok(())
         },
         (&Schema::Enum(_), _) => Err(EncodeError { kind: EncodeErrorKind::InvalidSchema }),
-        (&Schema::Array { ref items }, &Value::Array(ref fields)) => {
+
+        (&Schema::Array { ref items }, &Value::Array( ref value_items_type, ref item_values)) => {
+             assert!(&items.clone() == value_items_type);
              try!(encode(writer, &Schema::Long,
-                 &Value::Long(fields.len() as i64)));
-             for field in fields {
-                 try!(encode(writer, items, field));
+                 &Value::Long(item_values.len() as i64)));
+             for item in item_values {
+                 try!(encode(writer, &value_items_type, item));
              }
              try!(encode(writer, &Schema::Long, &Value::Long(0))); 
              Ok(())
         },
-        //Schema::Map { values } => ,
-        //Schema::Union { tys } => ,
-        (&Schema::Record(_), &Value::Record(ref value_schema, ref fields)) => {
+
+        // TODO Schema::Map { values } => ,
+        
+        // TODO Schema::Union { tys } => ,
+        
+        (&Schema::Record( ref schema_schema ), &Value::Record(ref value_schema, ref fields)) => {
+            assert!(&schema_schema.clone() == value_schema);
             for (field, value) in value_schema.fields.iter().zip(fields.iter()) {
                 try!(encode(writer, &field.ty, value));
             }
@@ -206,13 +213,13 @@ fn test_encode_record() {
 
     let fields = vec![
         Field { name: "year".into(), doc: None, properties: vec![], ty: Schema::Int },
-        Field { name: "color".into(), doc: None, properties: vec![], ty: Schema::Array{ items: Box::new(Schema::String)}  },
+        Field { name: "color".into(), doc: None, properties: vec![], ty: Schema::Array{ items: Rc::new(Schema::String)}  },
         Field { name: "running".into(), doc: None, properties: vec![], ty: Schema::Boolean },
     ];
     let schema = Rc::new(RecordSchema::new("Car".into(), None, vec![], fields));
     let value = Value::Record(schema.clone(), vec![
         Value::Int(2007),
-        Value::Array(vec![
+        Value::Array(Rc::new(Schema::String), vec![
                     Value::String("Red".into()),
                     Value::String("Blue".into())
         ]),
@@ -234,8 +241,10 @@ fn test_encode_record() {
 
 #[test]
 fn test_encode_int_array() {
-    let schema = Schema::Array{ items: Box::new(Schema::Int)};
-    let value = Value::Array(vec![
+    use std::rc::Rc;
+
+    let schema = Schema::Array{ items: Rc::new(Schema::Int)};
+    let value = Value::Array(Rc::new(Schema::Int), vec![
         Value::Int(1),
         Value::Int(2),
         Value::Int(3),

@@ -816,7 +816,7 @@ fn parse_type<'a>(lexer: &mut Lexer, ext_valid_tokens: &[TokenType])
             try!(lexer.expect_next_ty(TokenType::LAngle));
             let ty = try!(parse_type(lexer, &[]));
             try!(lexer.expect_next_ty(TokenType::RAngle));
-            Ok(Schema::Array { items: Box::new(ty) })
+            Ok(Schema::Array { items: Rc::new(ty) })
         },
         Ok(Token { ty: TokenType::Map, .. }) => {
             try!(lexer.expect_next_ty(TokenType::LAngle));

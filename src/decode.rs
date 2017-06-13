@@ -84,6 +84,7 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
 -> Result<Value<'a, 'static>, DecodeError> {
     match schema {
         &Schema::Null => Ok(Value::Null),
+
         &Schema::Boolean => {
             let mut buf = [0u8; 1];
             try!(reader.read_exact(&mut buf[..]));
@@ -93,6 +94,7 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
                 _ => Err(DecodeError { kind: DecodeErrorKind::InvalidBoolean }),
             }
         },
+
         &Schema::Int => {
             let num = decode_zig_zag(try!(decode_var_len_u64(reader)));
             if num < (i32::min_value() as i64) || num > (i32::max_value() as i64) {
@@ -101,19 +103,23 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
                 Ok(Value::Int(num as i32))
             }
         },
+
         &Schema::Long => {
             Ok(Value::Long(decode_zig_zag(try!(decode_var_len_u64(reader)))))
         },
+
         &Schema::Float => {
             let mut buf = [0u8; 4];
             try!(reader.read_exact(&mut buf[..]));
             Ok(Value::Float(unsafe { mem::transmute(buf) }))
         },
+
         &Schema::Double => {
             let mut buf = [0u8; 8];
             try!(reader.read_exact(&mut buf[..]));
             Ok(Value::Double(unsafe { mem::transmute(buf) }))
         },
+
         &Schema::Bytes => {
             if let Value::Long(len) = try!(decode(reader, &Schema::Long)) {
                 // TODO: should read in 64 KB chunks so that a long length won't cause a OOM
@@ -127,6 +133,7 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
                 panic!("decode returned invalid value");
             }
         },
+
         &Schema::String => {
             if let Value::Long(len) = try!(decode(reader, &Schema::Long)) {
                 // TODO: should read in 64 KB chunks so that a long length won't cause a OOM
@@ -140,6 +147,7 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
                 panic!("decode returned invalid value");
             }
         },
+
         &Schema::Record(ref inner_schema) => {
             let mut values = Vec::new();
             for field in inner_schema.fields.iter() {
@@ -147,14 +155,17 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
             }
             Ok(Value::Record(inner_schema.clone(), values))
         },
-        //Schema::Error(ref inner_schema) => {
+
+        // TODO Schema::Error(ref inner_schema) => {
         //    let values = Vec::new();
         //    for field in inner_schema.fields {
         //        values.push(try!(decode(reader, field.ty)));
         //    }
         //    Ok(Value::Error(inner_schema, values))
         //},
-        //Schema::Enum(ref inner_schema) => ,
+        
+        // TODO Schema::Enum(ref inner_schema) => ,
+
         &Schema::Array { ref items } => {
             let mut values = Vec::new();
             loop {
@@ -166,10 +177,13 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
                     values.push(try!(decode(reader, &*items)));
                 }
             }
-            Ok(Value::Array(values))
+            Ok(Value::Array(items.clone(), values))
         },
-        //Schema::Map { values } => ,
-        //Schema::Union { tys } => ,
+
+        // TODO Schema::Map { values } => ,
+        
+        // TODO Schema::Union { tys } => ,
+
         &Schema::Fixed(ref inner_schema) => {
             let mut val: Vec<u8> = repeat(0).take(inner_schema.size).collect();
             try!(reader.read_exact(&mut val));
@@ -281,7 +295,8 @@ fn test_decode_fixed() {
 
 #[test]
 fn test_decode_int_array() {
-    let schema = Schema::Array{ items: Box::new(Schema::Int)};
+    use std::rc::Rc;
+    let schema = Schema::Array{ items: Rc::new(Schema::Int)};
     let encoded : Vec<u8> = vec![
         4, // 2 (array block elements)
         2, 4, // 1, 2
@@ -289,7 +304,7 @@ fn test_decode_int_array() {
         6, // 1
         0 // 0 (array block elements)
     ];
-    let expected = Value::Array(vec![
+    let expected = Value::Array(Rc::new(Schema::Int), vec![
         Value::Int(1),
         Value::Int(2),
         Value::Int(3),
