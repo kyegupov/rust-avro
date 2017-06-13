@@ -156,13 +156,16 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
         //},
         //Schema::Enum(ref inner_schema) => ,
         &Schema::Array { ref items } => {
-            let n_items = try!(decode(reader, &Schema::Long)); 
             let mut values = Vec::new();
-            for _ in 0..n_items.unwrap_long() { 
-                values.push(try!(decode(reader, &*items)));
+            loop {
+                let n_items = try!(decode(reader, &Schema::Long)).unwrap_long();
+                if n_items == 0 {
+                    break;
+                }
+                for _ in 0..n_items { 
+                    values.push(try!(decode(reader, &*items)));
+                }
             }
-            let last_block = try!(decode(reader, &Schema::Long)); 
-            assert!(last_block.unwrap_long() == 0); 
             Ok(Value::Array(values))
         },
         //Schema::Map { values } => ,
@@ -280,9 +283,11 @@ fn test_decode_fixed() {
 fn test_decode_int_array() {
     let schema = Schema::Array{ items: Box::new(Schema::Int)};
     let encoded : Vec<u8> = vec![
-        6, // 3 (array chunk elements)
-        2, 4, 6, // 1, 2, 3
-        0 // 0 (array chunk elements)
+        4, // 3 (array block elements)
+        2, 4, // 1, 2
+        2, // 3 (array block elements)
+        6, // 3
+        0 // 0 (array block elements)
     ];
     let expected = Value::Array(vec![
         Value::Int(1),
