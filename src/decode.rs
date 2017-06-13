@@ -275,3 +275,21 @@ fn test_decode_fixed() {
         panic!("wrong type");
     }
 }
+
+#[test]
+fn test_decode_int_array() {
+    let schema = Schema::Array{ items: Box::new(Schema::Int)};
+    let encoded : Vec<u8> = vec![
+        6, // 3 (array chunk elements)
+        2, 4, 6, // 1, 2, 3
+        0 // 0 (array chunk elements)
+    ];
+    let expected = Value::Array(vec![
+        Value::Int(1),
+        Value::Int(2),
+        Value::Int(3),
+    ]);
+
+    assert_eq!(decode(&mut &encoded[..], &schema).unwrap(), expected);
+}
+

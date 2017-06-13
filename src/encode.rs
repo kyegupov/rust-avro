@@ -231,3 +231,22 @@ fn test_encode_record() {
     assert_eq!(&vec, &expected);
     vec.clear();
 }
+
+#[test]
+fn test_encode_int_array() {
+    let schema = Schema::Array{ items: Box::new(Schema::Int)};
+    let value = Value::Array(vec![
+        Value::Int(1),
+        Value::Int(2),
+        Value::Int(3),
+    ]);
+    let mut vec = vec![];
+    encode(&mut vec, &schema, &value).unwrap();
+    let expected : Vec<u8> = vec![
+        6, // 3 (array chunk elements)
+        2, 4, 6, // 1, 2, 3
+        0 // 0 (array chunk elements)
+    ];
+    assert_eq!(&vec, &expected);
+    vec.clear();
+}
