@@ -283,10 +283,10 @@ fn test_decode_fixed() {
 fn test_decode_int_array() {
     let schema = Schema::Array{ items: Box::new(Schema::Int)};
     let encoded : Vec<u8> = vec![
-        4, // 3 (array block elements)
+        4, // 2 (array block elements)
         2, 4, // 1, 2
         2, // 3 (array block elements)
-        6, // 3
+        6, // 1
         0 // 0 (array block elements)
     ];
     let expected = Value::Array(vec![
