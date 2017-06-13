@@ -158,7 +158,7 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
         &Schema::Array { ref items } => {
             let n_items = try!(decode(reader, &Schema::Long)); 
             let mut values = Vec::new();
-            for item in 0..n_items.unwrap_long() { 
+            for _ in 0..n_items.unwrap_long() { 
                 values.push(try!(decode(reader, &*items)));
             }
             let last_block = try!(decode(reader, &Schema::Long)); 
