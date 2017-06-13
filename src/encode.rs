@@ -206,18 +206,28 @@ fn test_encode_record() {
 
     let fields = vec![
         Field { name: "year".into(), doc: None, properties: vec![], ty: Schema::Int },
-        Field { name: "color".into(), doc: None, properties: vec![], ty: Schema::String },
+        Field { name: "color".into(), doc: None, properties: vec![], ty: Schema::Array{ items: Box::new(Schema::String)}  },
         Field { name: "running".into(), doc: None, properties: vec![], ty: Schema::Boolean },
     ];
     let schema = Rc::new(RecordSchema::new("Car".into(), None, vec![], fields));
     let value = Value::Record(schema.clone(), vec![
         Value::Int(2007),
-        Value::String("Red".into()),
+        Value::Array(vec![
+                    Value::String("Red".into()),
+                    Value::String("Blue".into())
+        ]),
         Value::Boolean(true)
     ]);
     let mut vec = vec![];
     encode(&mut vec, &Schema::Record(schema), &value).unwrap();
-
-    assert_eq!(&vec, &b"\xAE\x1F\x06\x52\x65\x64\x01");
+    let expected : Vec<u8> = vec![
+        174, 31, // 2017
+        4, // 2 (array chunk elements)
+        6, 82, 101, 100, // "Red"
+        8, 66, 108, 117, 101, // "Blue"
+        0, // 0 (array chunk elements)
+        1 // true
+    ];
+    assert_eq!(&vec, &expected);
     vec.clear();
 }
