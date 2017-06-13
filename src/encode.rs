@@ -129,8 +129,15 @@ pub fn encode<W: Write>(writer: &mut W, schema: &Schema, value: &Value) -> Resul
             Ok(())
         },
         (&Schema::Enum(_), _) => Err(EncodeError { kind: EncodeErrorKind::InvalidSchema }),
-
-        //Schema::Array { items } => ,
+        (&Schema::Array { ref items }, &Value::Array(ref fields)) => {
+             try!(encode(writer, &Schema::Long,
+                 &Value::Long(fields.len() as i64)));
+             for field in fields {
+                 try!(encode(writer, items, field));
+             }
+             try!(encode(writer, &Schema::Long, &Value::Long(0))); 
+             Ok(())
+        },
         //Schema::Map { values } => ,
         //Schema::Union { tys } => ,
         (&Schema::Record(_), &Value::Record(ref value_schema, ref fields)) => {

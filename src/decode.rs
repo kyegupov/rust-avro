@@ -155,7 +155,16 @@ pub fn decode<'a, R: Read>(reader: &mut R, schema: &Schema<'a>)
         //    Ok(Value::Error(inner_schema, values))
         //},
         //Schema::Enum(ref inner_schema) => ,
-        //Schema::Array { items } => ,
+        &Schema::Array { ref items } => {
+            let n_items = try!(decode(reader, &Schema::Long)); 
+            let mut values = Vec::new();
+            for item in 0..n_items.unwrap_long() { 
+                values.push(try!(decode(reader, &*items)));
+            }
+            let last_block = try!(decode(reader, &Schema::Long)); 
+            assert!(last_block.unwrap_long() == 0); 
+            Ok(Value::Array(values))
+        },
         //Schema::Map { values } => ,
         //Schema::Union { tys } => ,
         &Schema::Fixed(ref inner_schema) => {
